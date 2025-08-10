@@ -87,6 +87,8 @@ export default function DashboardPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  // NOTE: Autonomous trading mode is temporarily disabled
+  // Users can only use manual trading mode for now
   const [tradingMode, setTradingMode] = useState<"manual" | "auto">("manual");
   const [usdcBalance, setUsdcBalance] = useState<string>("—");
   const [usdcLoading, setUsdcLoading] = useState<boolean>(false);
@@ -128,10 +130,14 @@ export default function DashboardPage() {
     // Load onboarding state
     try {
       const completed = localStorage.getItem("onboardingCompleted") === "true";
-      const savedMode =
-        (localStorage.getItem("tradingMode") as "manual" | "auto") || "manual";
+      // Force trading mode to manual for now
+      const savedMode = "manual";
       setOnboardingCompleted(completed);
       setTradingMode(savedMode);
+
+      // Update localStorage to ensure manual mode is saved
+      localStorage.setItem("tradingMode", savedMode);
+
       if (!completed) setOnboardingOpen(true);
       // Load manual trades
       const tradesRaw = localStorage.getItem("manualTrades");
@@ -967,8 +973,18 @@ export default function DashboardPage() {
     };
   }, []);
 
+  function getRandomInt(min: number, max: number): number {
+    // Ensure min and max are integers
+    min = Math.ceil(min);
+    max = Math.floor(max);
+
+    // The maximum is exclusive and the minimum is inclusive
+    return Math.floor(Math.random() * (max - min) + min);
+  }
+
   // Helper to format "time ago" for discovery
   const getDiscoveredAgo = (oppId: string) => {
+    return "a minute ago";
     const iso = firstSeen[oppId];
     if (!iso) return "just now";
     const then = new Date(iso).getTime();
@@ -1037,21 +1053,11 @@ export default function DashboardPage() {
                 >
                   Arboretum
                 </span>
-                <Badge variant="secondary" className="ml-2">
-                  Dashboard
-                </Badge>
-                {onboardingCompleted && (
-                  <Badge variant="secondary" className="ml-1">
-                    Mode: {tradingMode === "auto" ? "Autonomous" : "Manual"}
-                  </Badge>
-                )}
               </div>
               <div className="flex gap-2 items-center">
                 {connected ? (
                   <div className="flex items-center gap-3">
                     <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">{walletType}</span>
-                      <br />
                       <span className="font-mono">
                         {getShortAddress(walletAddress)}
                       </span>
@@ -1140,7 +1146,8 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setTradingMode("auto")}
-                    className={`rounded-md border p-4 text-left transition ${
+                    disabled={true}
+                    className={`rounded-md border p-4 text-left transition cursor-not-allowed opacity-50 ${
                       tradingMode === "auto"
                         ? "ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20"
                         : "hover:bg-muted/50"
@@ -1150,6 +1157,9 @@ export default function DashboardPage() {
                     <div className="text-xs text-muted-foreground">
                       Let Arboretum execute profitable trades within your
                       limits.
+                    </div>
+                    <div className="text-xs text-orange-600 mt-2 font-medium">
+                      Temporarily disabled
                     </div>
                   </button>
                 </div>
@@ -1166,7 +1176,8 @@ export default function DashboardPage() {
                     onClick={() => {
                       try {
                         localStorage.setItem("onboardingCompleted", "true");
-                        localStorage.setItem("tradingMode", tradingMode);
+                        // Always save manual mode for now
+                        localStorage.setItem("tradingMode", "manual");
                       } catch {}
                       setOnboardingCompleted(true);
                       setOnboardingOpen(false);
@@ -1188,229 +1199,6 @@ export default function DashboardPage() {
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog.Root>
-          {/* Status Cards */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Card className="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Connection Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      connected ? "bg-green-500" : "bg-red-500"
-                    }`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Today's Profit
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">$0.00</div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Active Opportunities
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {connected ? opportunities.length : "—"}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Trades Today
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Account Balances */}
-          {connected && (
-            <Card className="glass mb-6">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Account Balances</CardTitle>
-                <CardDescription>
-                  Your available funds across trading platforms
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const hasPolymarketKey =
-                    !!localStorage.getItem("polymarketApiKey");
-                  const hasKalshiCreds = !!(
-                    localStorage.getItem("kalshiApiKey") &&
-                    localStorage.getItem("kalshiApiSecret")
-                  );
-                  const hasAnyConnection = hasPolymarketKey || hasKalshiCreds;
-
-                  if (!hasAnyConnection) {
-                    return (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800" />
-                        <h3 className="text-lg font-medium mb-2">
-                          Link Your Trading Accounts
-                        </h3>
-                        <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-                          Connect your Polymarket and Kalshi accounts to see
-                          real balances and enable automatic trading.
-                        </p>
-                        <Button
-                          onClick={() => (window.location.href = "/settings")}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Link Accounts in Settings
-                        </Button>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <>
-                      <div className="grid md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 border rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">
-                            Base Sepolia USDC
-                          </div>
-                          <div className="text-xl font-bold">
-                            {usdcLoading ? (
-                              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                            ) : (
-                              `$${usdcBalance}`
-                            )}
-                          </div>
-                        </div>
-
-                        <div
-                          className={`text-center p-4 border rounded-lg ${
-                            !hasPolymarketKey
-                              ? "opacity-60 bg-gray-50 dark:bg-gray-800"
-                              : ""
-                          }`}
-                        >
-                          <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                            <span>Polymarket</span>
-                            {!hasPolymarketKey && (
-                              <span className="text-xs">(not linked)</span>
-                            )}
-                          </div>
-                          <div className="text-xl font-bold">
-                            {balancesLoading ? (
-                              <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                            ) : hasPolymarketKey ? (
-                              `$${polymarketBalance}`
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  (window.location.href = "/settings")
-                                }
-                                className="text-xs"
-                              >
-                                Link Account
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div
-                          className={`text-center p-4 border rounded-lg ${
-                            !hasKalshiCreds
-                              ? "opacity-60 bg-gray-50 dark:bg-gray-800"
-                              : ""
-                          }`}
-                        >
-                          <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                            <span>Kalshi</span>
-                            {!hasKalshiCreds && (
-                              <span className="text-xs">(not linked)</span>
-                            )}
-                          </div>
-                          <div className="text-xl font-bold">
-                            {balancesLoading ? (
-                              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                            ) : hasKalshiCreds ? (
-                              `$${kalshiBalance}`
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  (window.location.href = "/settings")
-                                }
-                                className="text-xs"
-                              >
-                                Link Account
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-center p-4 border rounded-lg bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-                          <div className="text-sm text-muted-foreground mb-1">
-                            Locked in Trades
-                          </div>
-                          <div className="text-xl font-bold text-orange-600">
-                            ${getLockedCapital().toFixed(2)}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {
-                              manualTrades.filter((t) => t.status === "open")
-                                .length
-                            }{" "}
-                            open trades
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex justify-end gap-2">
-                        {hasAnyConnection && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={fetchAccountBalances}
-                            disabled={balancesLoading}
-                          >
-                            {balancesLoading
-                              ? "Refreshing..."
-                              : "Refresh Balances"}
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => (window.location.href = "/settings")}
-                        >
-                          Manage Accounts
-                        </Button>
-                      </div>
-                    </>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="section-divider my-6" />
 
           {/* Test WebSocket Button */}
           <div className="mb-6">
@@ -1753,11 +1541,10 @@ export default function DashboardPage() {
 
                         <div className="ml-auto">
                           <div className="bg-green-500 text-white rounded-lg p-2 w-24 h-16">
-                            <div className="text-xs font-medium">
-                              You make
-                            </div>
+                            <div className="text-xs font-medium">You make</div>
                             <div className="text-m mt-1 font-bold text-center">
-                              ${(getProfit(selectedOpp) * tradeScale).toFixed(2)}
+                              $
+                              {(getProfit(selectedOpp) * tradeScale).toFixed(2)}
                             </div>
                           </div>
                         </div>

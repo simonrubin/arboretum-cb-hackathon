@@ -14,13 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { LogOut } from "lucide-react";
 
 export default function SettingsPage() {
+  // NOTE: Autonomous trading mode is temporarily disabled
+  // Users can only use manual trading mode for now
   const [tradingMode, setTradingMode] = useState<"manual" | "auto">("manual");
   const [maxTradesPerDay, setMaxTradesPerDay] = useState<string>("10");
   const [maxCapitalPerTrade, setMaxCapitalPerTrade] = useState<string>("250");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const isAuto = tradingMode === "auto";
-  
+
   // Account linking state
   const [polymarketApiKey, setPolymarketApiKey] = useState<string>("");
   const [kalshiApiKey, setKalshiApiKey] = useState<string>("");
@@ -36,14 +38,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     try {
-      const savedMode =
-        (localStorage.getItem("tradingMode") as "manual" | "auto") || "manual";
+      // Force trading mode to manual for now
+      const savedMode = "manual";
       const savedTrades = localStorage.getItem("maxTradesPerDay") || "10";
       const savedCapital = localStorage.getItem("maxCapitalPerTrade") || "250";
       setTradingMode(savedMode);
       setMaxTradesPerDay(savedTrades);
       setMaxCapitalPerTrade(savedCapital);
-      
+
+      // Update localStorage to ensure manual mode is saved
+      localStorage.setItem("tradingMode", savedMode);
+
       // Load account linking data
       const savedPolyKey = localStorage.getItem("polymarketApiKey") || "";
       const savedKalshiKey = localStorage.getItem("kalshiApiKey") || "";
@@ -151,7 +156,8 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       localStorage.setItem("onboardingCompleted", "true");
-      localStorage.setItem("tradingMode", tradingMode);
+      // Always save manual mode for now
+      localStorage.setItem("tradingMode", "manual");
       localStorage.setItem(
         "maxTradesPerDay",
         String(parseInt(maxTradesPerDay || "0", 10))
@@ -175,25 +181,19 @@ export default function SettingsPage() {
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold gradient-text">
-                  🌳 Arboretum
+                <span
+                  className="text-xl font-bold cursor-pointer"
+                  onClick={() => (window.location.href = "/")}
+                >
+                  Arboretum
                 </span>
-                <Badge variant="secondary" className="ml-2">
-                  Settings
-                </Badge>
               </div>
               <div className="flex gap-2 items-center">
-                <Button
-                  variant="outline"
-                  onClick={() => (window.location.href = "/dashboard")}
-                >
-                  ← Back to App
-                </Button>
                 {connected && (
                   <div className="flex items-center gap-3">
                     <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">{walletType}</span>
-                      <br />
+                      {/* <span className="font-medium">{walletType}</span> */}
+                      {/* <br /> */}
                       <span className="font-mono">
                         {getShortAddress(walletAddress)}
                       </span>
@@ -217,6 +217,12 @@ export default function SettingsPage() {
 
       <div className="container mx-auto px-4 py-10 relative z-10">
         <div className="max-w-4xl mx-auto grid gap-6">
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = "/dashboard")}
+          >
+            ← Back to App
+          </Button>
           <Card className="glass">
             <CardHeader>
               <CardTitle>Trading Mode</CardTitle>
@@ -243,7 +249,8 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setTradingMode("auto")}
-                  className={`rounded-md border p-4 text-left transition ${
+                  disabled={true}
+                  className={`rounded-md border p-4 text-left transition cursor-not-allowed opacity-50 ${
                     tradingMode === "auto"
                       ? "ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20"
                       : "hover:bg-muted/50"
@@ -252,6 +259,9 @@ export default function SettingsPage() {
                   <div className="font-medium mb-1">Autonomous Trading</div>
                   <div className="text-xs text-muted-foreground">
                     Execute profitable trades automatically within your limits.
+                  </div>
+                  <div className="text-xs text-orange-600 mt-2 font-medium">
+                    Coming Soon
                   </div>
                 </button>
               </div>
@@ -303,157 +313,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="glass">
-            <CardHeader>
-              <CardTitle>Account Linking</CardTitle>
-              <CardDescription>
-                Connect your Polymarket and Kalshi accounts to read balances and execute trades
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Polymarket Section */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                      <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">P</span>
-                    </div>
-                    <div>
-                      <div className="font-medium">Polymarket</div>
-                      <div className="text-xs text-muted-foreground">
-                        {polymarketConnected ? "Connected" : "Not connected"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {polymarketConnected && (
-                      <Badge variant="secondary" className="text-green-600">
-                        ✓ Connected
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                {!polymarketConnected ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm mb-2">
-                        API Key
-                      </label>
-                      <Input
-                        type="password"
-                        value={polymarketApiKey}
-                        onChange={(e) => setPolymarketApiKey(e.target.value)}
-                        placeholder="Enter your Polymarket API key"
-                      />
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Get your API key from Polymarket's developer settings
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={handleConnectPolymarket}
-                      className="w-full bg-purple-600 hover:bg-purple-700"
-                    >
-                      Connect Polymarket Account
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Button 
-                      onClick={handleDisconnectPolymarket}
-                      variant="outline"
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      Disconnect Account
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Kalshi Section */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                      <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">K</span>
-                    </div>
-                    <div>
-                      <div className="font-medium">Kalshi</div>
-                      <div className="text-xs text-muted-foreground">
-                        {kalshiConnected ? "Connected" : "Not connected"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {kalshiConnected && (
-                      <Badge variant="secondary" className="text-green-600">
-                        ✓ Connected
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                {!kalshiConnected ? (
-                  <div className="space-y-3">
-                    <div className="grid md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm mb-2">
-                          API Key
-                        </label>
-                        <Input
-                          type="password"
-                          value={kalshiApiKey}
-                          onChange={(e) => setKalshiApiKey(e.target.value)}
-                          placeholder="API key"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-2">
-                          API Secret
-                        </label>
-                        <Input
-                          type="password"
-                          value={kalshiApiSecret}
-                          onChange={(e) => setKalshiApiSecret(e.target.value)}
-                          placeholder="API secret"
-                        />
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Get your API credentials from Kalshi's developer portal
-                    </div>
-                    <Button 
-                      onClick={handleConnectKalshi}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      Connect Kalshi Account
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Button 
-                      onClick={handleDisconnectKalshi}
-                      variant="outline"
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      Disconnect Account
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-                <div className="flex items-start gap-2">
-                  <span className="text-amber-600 dark:text-amber-400 mt-0.5">⚠️</span>
-                  <div className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Security Notice:</strong> Your API keys are stored locally and encrypted. 
-                    Only provide read-only API keys when possible. Never share your API credentials.
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Action Buttons */}
           <div className="flex justify-end gap-2">
             <Button
@@ -470,7 +329,7 @@ export default function SettingsPage() {
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
-          
+
           {saved && (
             <div className="text-sm text-green-600 text-right">
               Settings saved.
