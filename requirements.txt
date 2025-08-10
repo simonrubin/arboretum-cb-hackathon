@@ -1,0 +1,19 @@
+# Arboretum Dependencies - Minimal for Hackathon Demo
+
+# Core API and Web Framework  
+fastapi>=0.109.0
+uvicorn>=0.27.0
+jinja2>=3.1.0
+
+# Agent CLI and utilities
+click>=8.1.0
+rich>=13.7.0
+requests>=2.32.0
+python-dotenv>=1.1.0
+
+# Web3 functionality (optional - for production)
+# web3>=6.15.0
+# eth-account>=0.9.0
+
+# Coinbase CDP SDK (optional - for production)
+# cdp-sdk>=0.6.0

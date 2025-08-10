@@ -1,0 +1,39 @@
+# Arboretum Hackathon Backend - Real X402 & CDP Integration
+
+# Core FastAPI with X402 middleware
+fastapi>=0.104.0
+uvicorn>=0.24.0
+websockets>=12.0
+python-dotenv>=1.0.0
+
+firebase_admin==6.3.0
+
+# X402 Protocol Integration  
+x402>=0.2.0
+
+# Coinbase CDP SDK
+coinbase-advanced-py>=1.0.0
+cdp-sdk>=0.0.8
+
+# Database and Auth
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+fastapi-users[sqlalchemy]>=12.0.0
+asyncpg>=0.29.0
+aiosqlite>=0.19.0
+
+# Real-time and async
+redis>=5.0.0
+celery>=5.3.0
+
+# Data validation
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+
+# HTTP clients
+httpx>=0.25.0
+aiohttp>=3.9.0
+
+# Development
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
